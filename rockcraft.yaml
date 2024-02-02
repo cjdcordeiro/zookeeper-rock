@@ -1,0 +1,107 @@
+# Copyright 2023 Canonical Ltd.
+# See LICENSE file for licensing details.
+---
+name: zookeeper  # the name of your ROCK
+base: ubuntu@22.04  # the base environment for this ROCK
+version: '3.8.2'  # just for humans. Semantic versioning is recommended
+summary: Apache ZooKeeper OCI Image  # 79 char long summary
+description: |
+  Current Apache ZooKeeper Docker Image from Canonical, based
+  on [Ubuntu](https://ubuntu.com/). Receives security updates and tracks the
+  newest combination of Apache ZooKeeper and Ubuntu. This
+  repository is free to use and exempted from per-user rate limits.
+
+  ZooKeeper is a centralized service for maintaining configuration
+  information,  naming, providing distributed synchronization, and providing
+  group services. All of these kinds of services are used in some form or
+  another by distributed applications.
+
+  Read more on the [Apache website](https://zookeeper.apache.org/).
+  This image is shipped in support of the Apache Kafka image.
+license: Apache-2.0  # your application's SPDX license
+
+platforms:  # The platforms this ROCK should be built on and run on
+  amd64:
+
+environment:
+  JAVA_HOME: /usr/lib/jvm/java-8-openjdk-amd64
+  ZOO_LOG_DIR: /var/log/zookeeper
+  ZOOCFGDIR: /etc/zookeeper
+
+services:
+  zookeeper:
+    override: replace
+    command: >
+      /opt/zookeeper/bin/zkServer.sh --config /etc/zookeeper
+      start-foreground
+    startup: enabled
+    user: zookeeper
+    group: zookeeper
+
+parts:
+  zookeeper:
+    plugin: nil
+    source:
+      "https://github.com/canonical/central-uploader/releases/download\
+      /zookeeper-${CRAFT_PROJECT_VERSION}-ubuntu0\
+      /zookeeper-${CRAFT_PROJECT_VERSION}-ubuntu0-20231121152605.tgz"
+    stage-packages:
+      - openjdk-8-jre-headless
+    build-environment:
+      - JAVA_HOME: /usr/lib/jvm/java-8-openjdk-amd64/
+    override-build: |
+      # Base directory skeleton
+      mkdir -p $CRAFT_PART_INSTALL/var/lib/zookeeper/
+      mkdir -p $CRAFT_PART_INSTALL/var/log/zookeeper/
+      mkdir -p $CRAFT_PART_INSTALL/opt/zookeeper/
+      mkdir -p $CRAFT_PART_INSTALL/etc/zookeeper/
+
+      # Copy executables
+      cp -r ./* $CRAFT_PART_INSTALL/opt/zookeeper
+      rm -r $CRAFT_PART_INSTALL/opt/zookeeper/conf
+
+      # Create configuration folder
+      cp -r ./conf/* $CRAFT_PART_INSTALL/etc/zookeeper/.
+      mv $CRAFT_PART_INSTALL/etc/zookeeper/zoo_sample.cfg \
+         $CRAFT_PART_INSTALL/etc/zookeeper/zoo.cfg
+
+      # Generate configuration
+      sed -i "s:dataDir=/tmp/zookeeper:dataDir=/var/lib/zookeeper/data:g" \
+        $CRAFT_PART_INSTALL/etc/zookeeper/zoo.cfg
+      echo "dataLogDir=/var/lib/zookeeper/data-log" >> \
+        $CRAFT_PART_INSTALL/etc/zookeeper/zoo.cfg
+
+      # Java linking
+      ln -s /usr/lib/jvm/java-8-openjdk-amd64/bin/java \
+        $CRAFT_PART_INSTALL/usr/bin/java
+
+    override-prime: |
+      craftctl default
+      rm -vf usr/lib/jvm/java-8-openjdk-amd64/lib/security/cacerts
+
+  non-root-user:
+    plugin: nil
+    after: [zookeeper]
+    overlay-script: |
+      # Create a user in the $CRAFT_OVERLAY chroot
+      groupadd -R $CRAFT_OVERLAY -g 1000 zookeeper
+      useradd -R $CRAFT_OVERLAY -M -r -g zookeeper -u 1000 zookeeper
+    override-prime: |
+      craftctl default
+
+      # Give permissions to the required folders
+      chown -R 1000:1000 \
+        opt/zookeeper \
+        var/lib/zookeeper \
+        var/log/zookeeper \
+        etc/zookeeper
+
+      find opt/zookeeper -type d -print0 | xargs -0 chmod 0755
+      find opt/zookeeper -type f -print0 | xargs -0 chmod 0644
+      chmod 0755 opt/zookeeper/bin/*.sh
+
+      find var/lib/zookeeper var/log/zookeeper -type d -print0 | \
+        xargs -0 chmod 0750
+
+      find etc/zookeeper -type d -print0 | xargs -0 chmod 0775
+      find etc/zookeeper -type f -print0 | xargs -0 chmod 0664
