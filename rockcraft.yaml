@@ -3,13 +3,13 @@
 ---
 name: zookeeper  # the name of your ROCK
 base: ubuntu@22.04  # the base environment for this ROCK
-version: '3.8.2'  # just for humans. Semantic versioning is recommended
+version: '3.8.4'  # just for humans. Semantic versioning is recommended
 summary: Apache ZooKeeper OCI Image  # 79 char long summary
 description: |
   Apache ZooKeeper Image from Canonical, based
-  on [Ubuntu](https://ubuntu.com/). Receives security updates and tracks the
-  newest combination of Apache ZooKeeper and Ubuntu. This
-  repository is free to use and exempted from per-user rate limits.
+  on [Ubuntu](https://ubuntu.com/). Receives security updates for Apache
+  ZooKeeper and Ubuntu. This repository is free to use and exempted from
+  per-user rate limits.
 
   ZooKeeper is a centralized service for maintaining configuration
   information,  naming, providing distributed synchronization, and providing
@@ -24,7 +24,7 @@ platforms:  # The platforms this ROCK should be built on and run on
   amd64:
 
 environment:
-  JAVA_HOME: /usr/lib/jvm/java-8-openjdk-amd64
+  JAVA_HOME: /usr/lib/jvm/java-18-openjdk-amd64
   ZOO_LOG_DIR: /var/log/zookeeper
   ZOOCFGDIR: /etc/zookeeper
 
@@ -44,12 +44,12 @@ parts:
     source:
       "https://github.com/canonical/central-uploader/releases/download\
       /zookeeper-${CRAFT_PROJECT_VERSION}-ubuntu0\
-      /zookeeper-${CRAFT_PROJECT_VERSION}-ubuntu0-20231121152605.tgz"
+      /zookeeper-${CRAFT_PROJECT_VERSION}-ubuntu0-20240308113314.tgz"
     overlay-packages:
-      - openjdk-8-jre-headless
+      - openjdk-18-jre-headless
     overlay-script: |
       # Removing cacerts
-      rm -vf usr/lib/jvm/java-8-openjdk-amd64/lib/security/cacerts
+      rm -vf usr/lib/jvm/java-18-openjdk-amd64/lib/security/cacerts
 
     override-build: |
       # Base directory skeleton
